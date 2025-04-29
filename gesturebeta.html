@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gesture Recognition with Teachable Machine</title>
+
+  <!-- TensorFlow.js library -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin-top: 50px;
+    }
+    video {
+      border: 1px solid black;
+      margin-bottom: 20px;
+    }
+    h1 {
+      color: #4CAF50;
+    }
+    #gesture-output {
+      font-size: 20px;
+      color: blue;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Gesture Recognition with Teachable Machine</h1>
+  <p>Use the webcam to show your hand gestures. The model will react to "Thumb Up" gesture.</p>
+
+  <div id="webcam-container"></div>
+  <div id="label-container"></div>
+  <div id="gesture-output">Waiting for gesture...</div>
+
+  <button type="button" onclick="init()">Start</button>
+
+  <script>
+    // The link to your model provided by Teachable Machine export panel
+    const URL = "https://teachablemachine.withgoogle.com/models/ov14UZYMN/";
+
+    let model, webcam, labelContainer, maxPredictions;
+
+    // Load the image model and setup the webcam
+    async function init() {
+        const modelURL = URL + "model.json";  // Link to model file
+        const metadataURL = URL + "metadata.json";  // Link to metadata file
+
+        // Load the model and metadata
+        model = await tmImage.load(modelURL, metadataURL);
+        maxPredictions = model.getTotalClasses();
+
+        // Setup the webcam
+        const flip = true; // Whether to flip the webcam
+        webcam = new tmImage.Webcam(200, 200, flip);  // Width, height, flip
+        await webcam.setup(); // Request access to the webcam
+        await webcam.play();
+        window.requestAnimationFrame(loop);
+
+        // Append the webcam feed to the page
+        document.getElementById("webcam-container").appendChild(webcam.canvas);
+
+        // Setup the label container
+        labelContainer = document.getElementById("label-container");
+        for (let i = 0; i < maxPredictions; i++) {
+            labelContainer.appendChild(document.createElement("div"));
+        }
+    }
+
+    // Main loop function to continuously process webcam frames
+    async function loop() {
+        webcam.update();  // Update the webcam frame
+        await predict();
+        window.requestAnimationFrame(loop);  // Keep the loop running
+    }
+
+    // Function to make a prediction using the model
+    async function predict() {
+        const prediction = await model.predict(webcam.canvas);
+        
+        for (let i = 0; i < maxPredictions; i++) {
+            const classPrediction = prediction[i].className + ": " + prediction[i].probability.toFixed(2);
+            labelContainer.childNodes[i].innerHTML = classPrediction;
+
+            // If "Thumbs Up" gesture detected, update output
+            if (prediction[i].className === "Thumbs Up" && prediction[i].probability > 0.7) {
+                document.getElementById("gesture-output").innerText = "Thumb Up Detected! 👍";
+            } else {
+                document.getElementById("gesture-output").innerText = "Waiting for gesture...";
+            }
+        }
+    }
+  </script>
+
+</body>
+</html>
